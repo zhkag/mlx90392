@@ -5,7 +5,7 @@
  *
  * Change Logs:
  * Date           Author       Notes
- * 2022-02-14     lgnq         the first version
+ * 2022-08-20     lgnq         the first version
  */
 
 #include <rtthread.h>
@@ -88,7 +88,6 @@ const float mlx90392_tconv[8][4] =
 rt_err_t mlx90392_transfer(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt_uint8_t send_len, rt_uint8_t *recv_buf, rt_uint8_t recv_len)
 {
     rt_err_t res = RT_EOK;
-    union mlx90392_status status;
 
     if (dev->bus->type == RT_Device_Class_I2CBUS)
     {
@@ -107,18 +106,6 @@ rt_err_t mlx90392_transfer(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt
 
         if (rt_i2c_transfer((struct rt_i2c_bus_device *)dev->bus, msgs, 2) == 2)
         {
-            status.byte_val = recv_buf[0];
-            
-            rt_kprintf("status = 0x%x\r\n", status.byte_val);
-            rt_kprintf("[BIT7] BURST_MODE = 0x%x - MLX90392 works in Burst mode\r\n", status.burst_mode);
-            rt_kprintf("[BIT6] WOC_MODE   = 0x%x - MLX90392 works in Wake On Change mode\r\n", status.woc_mode);
-            rt_kprintf("[BIT5] SM_MODE    = 0x%x - MLX90392 works in Single measurement mode\r\n", status.sm_mode);
-            rt_kprintf("[BIT4] ERROR      = 0x%x - ECC_ERROR or command is rejected\r\n", status.error);
-            rt_kprintf("[BIT3] SED        = 0x%x - a bit error in the non-volatile memory has been corrected\r\n", status.sed);
-            rt_kprintf("[BIT2] RS         = 0x%x - Reset bit\r\n", status.rs);
-            rt_kprintf("[BIT1] D1         = 0x%x - The number of response bytes correspond to 2*D[1:0]+2\r\n", status.d1);
-            rt_kprintf("[BIT0] D0         = 0x%x - The number of response bytes correspond to 2*D[1:0]+2\r\n\r\n", status.d0);
-
             res = RT_EOK;
         }
         else
@@ -128,38 +115,12 @@ rt_err_t mlx90392_transfer(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt
         }
 #endif
     }
-    else if (dev->bus->type == RT_Device_Class_SPIDevice)
-    {
-#ifdef RT_USING_SPI
-        res = rt_spi_send_then_recv((struct rt_spi_device *)dev->bus, send_buf, send_len, recv_buf, recv_len);
-#endif
-    }
     else
     {
         
     }
 
     return res;
-}
-
-rt_err_t mlx90392_nop(struct mlx90392_device *dev)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = CMD_NOP;
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
-rt_err_t mlx90392_exit(struct mlx90392_device *dev)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = CMD_EXIT;
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
 }
 
 rt_err_t mlx90392_memory_recall(struct mlx90392_device *dev)
@@ -244,6 +205,166 @@ static rt_err_t mlx90392_read_reg(struct mlx90392_device *dev, rt_uint8_t reg, r
     if (res == RT_EOK)
     {
         *val = recv_buf[0];
+    }
+
+    return res;
+}
+
+static rt_err_t mlx90392_mem_direct_read(struct mlx90392_device *dev, rt_uint8_t *recv_buf, rt_uint8_t recv_len)
+{
+    rt_err_t res = RT_EOK;
+
+    if (dev->bus->type == RT_Device_Class_I2CBUS)
+    {
+#ifdef RT_USING_I2C
+        struct rt_i2c_msg msgs;
+
+        msgs.addr  = dev->i2c_addr;    /* I2C Slave address */
+        msgs.flags = RT_I2C_RD;        /* Read flag */
+        msgs.buf   = recv_buf;         /* Read data pointer */
+        msgs.len   = recv_len;         /* Number of bytes read */
+
+        if (rt_i2c_transfer((struct rt_i2c_bus_device *)dev->bus, &msgs, 1) == 1)
+        {
+            res = RT_EOK;
+        }
+        else
+        {
+            rt_kprintf("rt_i2c_transfer error\r\n");
+            res = -RT_ERROR;
+        }
+#endif
+    }
+    else
+    {
+
+    }
+
+    return res;
+}
+
+static rt_err_t mlx90392_mem_read(struct mlx90392_device *dev, rt_uint8_t start_addr, rt_uint8_t *recv_buf, rt_uint8_t recv_len)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t send_buf = start_addr;
+
+    if (dev->bus->type == RT_Device_Class_I2CBUS)
+    {
+#ifdef RT_USING_I2C
+        struct rt_i2c_msg msgs[2];
+
+        msgs[0].addr  = dev->i2c_addr;    /* I2C Slave address */
+        msgs[0].flags = RT_I2C_WR;        /* Write flag */
+        msgs[0].buf   = &send_buf;         /* Write data pointer */
+        msgs[0].len   = 1;         /* Number of bytes write */
+
+        msgs[1].addr  = dev->i2c_addr;    /* I2C Slave address */
+        msgs[1].flags = RT_I2C_RD;        /* Read flag */
+        msgs[1].buf   = recv_buf;         /* Read data pointer */
+        msgs[1].len   = recv_len;         /* Number of bytes read */
+
+        if (rt_i2c_transfer((struct rt_i2c_bus_device *)dev->bus, msgs, 2) == 2)
+        {
+            res = RT_EOK;
+        }
+        else
+        {
+            rt_kprintf("rt_i2c_transfer error\r\n");
+            res = -RT_ERROR;
+        }
+#endif
+    }
+    else
+    {
+
+    }
+
+    return res;
+}
+
+//send_buf = start register address + data1 + data2 + ...
+static rt_err_t mlx90392_mem_write(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt_uint8_t send_len)
+{
+    rt_err_t res = RT_EOK;
+
+    if (dev->bus->type == RT_Device_Class_I2CBUS)
+    {
+#ifdef RT_USING_I2C
+        struct rt_i2c_msg msgs;
+
+        msgs.addr  = dev->i2c_addr;    /* I2C Slave address */
+        msgs.flags = RT_I2C_WR;        /* Read flag */
+        msgs.buf   = send_buf;         /* Read data pointer */
+        msgs.len   = send_len;         /* Number of bytes read */
+
+        if (rt_i2c_transfer((struct rt_i2c_bus_device *)dev->bus, &msgs, 1) == 1)
+        {
+            res = RT_EOK;
+        }
+        else
+        {
+            rt_kprintf("rt_i2c_transfer error\r\n");
+            res = -RT_ERROR;
+        }
+#endif
+    }
+    else
+    {
+
+    }
+
+    return res;
+}
+
+static rt_err_t mlx90392_address_reset(struct mlx90392_device *dev)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t send_buf[2];
+
+    send_buf[0] = 0x11;
+    send_buf[1] = 0x06;
+
+    if (dev->bus->type == RT_Device_Class_I2CBUS)
+    {
+#ifdef RT_USING_I2C
+        struct rt_i2c_msg msgs;
+
+        msgs.addr  = dev->i2c_addr;    /* I2C Slave address */
+        msgs.flags = RT_I2C_WR;        /* Read flag */
+        msgs.buf   = send_buf;         /* Read data pointer */
+        msgs.len   = 2;                /* Number of bytes read */
+
+        if (rt_i2c_transfer((struct rt_i2c_bus_device *)dev->bus, &msgs, 1) == 1)
+        {
+            res = RT_EOK;
+        }
+        else
+        {
+            rt_kprintf("rt_i2c_transfer error\r\n");
+            res = -RT_ERROR;
+        }
+#endif
+    }
+    else
+    {
+
+    }
+
+    return res;
+}
+
+static rt_err_t mlx90392_read_regs(struct mlx90392_device *dev, rt_uint8_t start_addr, rt_uint8_t *recv_buf, rt_uint8_t len)
+{
+    rt_err_t res = RT_EOK;
+
+    rt_uint8_t send_buf[2];
+
+    send_buf[0] = start_addr;
+
+    res = mlx90392_transfer(dev, send_buf, 1, recv_buf, len);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("error\r\n");
     }
 
     return res;
@@ -886,33 +1007,24 @@ struct mlx90392_device *mlx90392_init(const char *dev_name, rt_uint8_t param)
         }
         else
         {
-            /* find mlx90392 device at address: 0x19 */
+            rt_uint8_t id[2];
+
+            /* find mlx90392 device at address: 0x0C */
             dev->i2c_addr = MLX90392_I2C_ADDRESS;
-//             if (mlx90392_read_reg(dev, 0x0A, &reg) != RT_EOK)
-            // {
-            //     /* find mlx90392 device at address 0x19 */
-            //     dev->i2c_addr = MPU6XXX_ADDRESS_AD0_HIGH;
-            //     if (mlx90392_read_regs(dev, MPU6XXX_RA_WHO_AM_I, 1, &reg) != RT_EOK)
-            //     {
-            //         rt_kprintf("Can't find device at '%s'!", dev_name);
-            //         goto __exit;
-            //     }
-            // }
+            if (mlx90392_mem_read(dev, 0x0A, id, 2) != RT_EOK)
+            {
+                rt_kprintf("Can't find device at '%s'!", dev_name);
+                goto __exit;
+            }
+            else
+            {
+                rt_kprintf("CID is 0x%x\r\n", id[0]);
+                rt_kprintf("DID is 0x%x\r\n", id[1]);
+            }
+
             rt_kprintf("Device i2c address is:'0x%x'!\r\n", dev->i2c_addr);
         }
 #endif        
-    }
-    else if (dev->bus->type == RT_Device_Class_SPIDevice)
-    {
-#ifdef RT_USING_SPI
-        struct rt_spi_configuration cfg;
-
-        cfg.data_width = 8;
-        cfg.mode = RT_SPI_MASTER | RT_SPI_MODE_0 | RT_SPI_MSB;
-        cfg.max_hz = MLX90392_SPI_MAX_SPEED; /* Set spi max speed */
-
-        rt_spi_configure((struct rt_spi_device *)dev->bus, &cfg);
-#endif
     }
     else
     {
@@ -989,6 +1101,27 @@ static void mlx90392(int argc, char **argv)
         {
             mlx90392_reset(dev);
         }
+        else if (!strcmp(argv[1], "rrs"))
+        {
+            rt_uint8_t regs[0x16];
+            rt_uint8_t start_addr = atoi(argv[2]);
+            rt_uint8_t len = atoi(argv[3]);
+
+            mlx90392_read_regs(dev, start_addr, regs, len);
+
+            for (int i=0; i<len; i++)
+                rt_kprintf("Reading REG[%d] = 0x%x\r\n", start_addr+i, regs[i]);
+        }
+        else if (!strcmp(argv[1], "id"))
+        {
+            rt_uint8_t id[2];
+            rt_uint8_t start_addr = 10;
+            rt_uint8_t len = 2;
+
+            mlx90392_mem_read(dev, start_addr, id, len);
+            rt_kprintf("CID = 0x%x\r\n", id[0]);
+            rt_kprintf("DID = 0x%x\r\n", id[1]);
+        }
         else if (!strcmp(argv[1], "rr"))
         {
             union mlx90392_register0 reg0;
@@ -1009,33 +1142,6 @@ static void mlx90392(int argc, char **argv)
                 rt_kprintf("[BIT7-7] Z_SERIES = 0x%x - Enable all plates for Z-measurement\r\n", reg0.z_series);
                 rt_kprintf("[BIT8-8] BITS     = 0x%x - Enable the on-chip coil, applying a Z-field[Built-in Self Test]\r\n", reg0.bist);
                 rt_kprintf("[BIT9-F] ANA_RESERVED_LOW = 0x%x - Reserved IO trimming bits\r\n", reg0.ana_reserved_low);
-                break;
-            case 1:
-                reg1.word_val = register_val;
-                rt_kprintf("REG[1] = 0x%x\r\n", reg1.word_val);
-                rt_kprintf("[BIT0-5] BURST_DATA_RATE = 0x%x - Defines TINTERVAL as BURST_DATA_RATE * 20ms\r\n", reg1.burst_data_rate);
-                rt_kprintf("[BIT6-9] BURST_SEL       = 0x%x - Defines the MDATA in burst mode if SB command argument = 0\r\n", reg1.burst_sel);
-                rt_kprintf("[BITA-A] TCMP_EN         = 0x%x - Enables on-chip sensitivity drift compensation\r\n", reg1.tcmp_en);
-                rt_kprintf("[BITB-B] EXT_TRG         = 0x%x - Allows external trigger inputs when set, if TRIG_INT_SEL = 0\r\n", reg1.ext_trg);
-                rt_kprintf("[BITC-C] WOC_DIFF        = 0x%x - Sets the Wake-up On Change based on Δ{sample(t),sample(t-1)}\r\n", reg1.woc_diff);
-                rt_kprintf("[BITD-E] COMM_MODE       = 0x%x - Allow only SPI [10b], only I2C [11b] or both [0Xb] according to CS pin\r\n", reg1.comm_mode);
-                rt_kprintf("[BITF-F] TRIG_INT        = 0x%x - Puts TRIG_INT pin in TRIG mode when cleared, INT mode otherwise\r\n", reg1.trig_int);
-                break;
-            case 2:
-                reg2.word_val = register_val;
-                rt_kprintf("REG[2] = 0x%x\r\n", reg2.word_val);
-                rt_kprintf("[BIT0-1] OSR      = 0x%x - Magnetic sensor ADC oversampling ratio\r\n", reg2.osr);
-                rt_kprintf("[BIT2-4] DIG_FILT = 0x%x - Digital filter applicable to ADC\r\n", reg2.dig_filt);
-                rt_kprintf("[BIT5-6] RES_X    = 0x%x - Selects the desired 16-bit output value from the 19-bit ADC\r\n", reg2.res_x);
-                rt_kprintf("[BIT7-8] RES_Y    = 0x%x - Selects the desired 16-bit output value from the 19-bit ADC\r\n", reg2.res_y);
-                rt_kprintf("[BIT9-A] RES_Z    = 0x%x - Selects the desired 16-bit output value from the 19-bit ADC\r\n", reg2.res_z);
-                rt_kprintf("[BITB-C] OSR_2    = 0x%x - Temperature sensor ADC oversampling ratio\r\n", reg2.osr2);
-                break;
-            case 3:
-                reg3.word_val = register_val;
-                rt_kprintf("REG[3] = 0x%x\r\n", reg3.word_val);
-                rt_kprintf("[BIT0-7] SENS_TC_LT = 0x%x - Sensitivity drift compensation factor for T > TREF\r\n", reg3.sens_tc_lt);
-                rt_kprintf("[BIT8-F] SENS_TC_HT = 0x%x - Sensitivity drift compensation factor for T < TREF\r\n", reg3.sens_tc_ht);
                 break;
             default:
                 rt_kprintf("REG[%d] = 0x%x\r\n", atoi(argv[2]), register_val);
