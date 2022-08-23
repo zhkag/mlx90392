@@ -123,16 +123,6 @@ rt_err_t mlx90392_transfer(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt
     return res;
 }
 
-rt_err_t mlx90392_memory_recall(struct mlx90392_device *dev)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = CMD_MEMORY_RECALL;
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
 rt_err_t mlx90392_memory_store(struct mlx90392_device *dev)
 {
     rt_uint8_t send_buf[2];
