@@ -85,36 +85,6 @@ const float mlx90392_tconv[8][4] =
     {25.65, 50.61, 100.53, 200.37},
 };
 
-rt_err_t mlx90392_start_burst(struct mlx90392_device *dev, rt_int8_t zyxt)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = (CMD_START_BURST)|(zyxt);
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
-rt_err_t mlx90392_wake_on_change(struct mlx90392_device *dev, rt_int8_t zyxt)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = (CMD_WAKE_ON_CHANGE)|(zyxt);
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
-rt_err_t mlx90392_start_measurement(struct mlx90392_device *dev, rt_int8_t zyxt)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = (CMD_START_MEASUREMENT)|(zyxt);
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
 /**
  * This function reads the value of register for mlx90392
  *
@@ -923,7 +893,6 @@ void mlx90392_deinit(struct mlx90392_device *dev)
 
 static void mlx90392(int argc, char **argv)
 {
-    rt_uint16_t register_val;
     static struct mlx90392_device *dev = RT_NULL;
 
     /* If the number of arguments less than 2 */
@@ -932,10 +901,8 @@ static void mlx90392(int argc, char **argv)
         rt_kprintf("\n");
         rt_kprintf("mlx90392 [OPTION] [PARAM]\n");
         rt_kprintf("         probe <dev_name>      Probe mlx90392 by given name, ex:i2c2\n");
-        rt_kprintf("         rr <reg>              Set sample rate to var\n");
-        rt_kprintf("                               var = [1000 -  4] when dlpf is enable\n");
-        rt_kprintf("                               var = [8000 - 32] when dlpf is disable\n");
-        rt_kprintf("         wr <reg> <var>        Set gyro range to var\n");
+        rt_kprintf("         id                    Print CID and DID\n");
+        rt_kprintf("         stat1                 Print stat1\n");
         rt_kprintf("                               var = [0 - 3] means [250 - 2000DPS]\n");
         rt_kprintf("         ar <var>              Set accel range to var\n");
         rt_kprintf("                               var = [0 - 3] means [2 - 16G]\n");
@@ -977,6 +944,7 @@ static void mlx90392(int argc, char **argv)
         else if (!strcmp(argv[1], "stat1"))
         {
             union mlx90392_stat1 stat1;
+
             mlx90392_get_stat1(dev, &stat1);
         }
         else if (!strcmp(argv[1], "x"))
