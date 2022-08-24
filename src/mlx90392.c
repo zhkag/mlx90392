@@ -344,7 +344,7 @@ static rt_err_t mlx90392_get_stat1(struct mlx90392_device *dev, union mlx90392_s
     }
     else
     {
-        rt_kprintf("STAT1 = 0x%x\r\n", stat1->byte_val);
+        rt_kprintf("STAT1 = 0x%x, DRDY = 0x%x\r\n", stat1->byte_val, stat1->drdy);
     }
 
     return res;
@@ -1017,14 +1017,23 @@ void mlx90392_setup(struct mlx90392_device *dev)
  * This function gets the raw data of mlx90392
  *
  * @param dev the pointer of device driver structure
- * @param txyz the pointer of 3axes structure for receive data
+ * @param xyz the pointer of 3axes structure for receive data
  *
  * @return the reading status, RT_EOK represents  reading the data successfully.
  */
-static rt_err_t mlx90392_get_txyz_raw(struct mlx90392_device *dev, struct mlx90392_txyz *txyz)
+static rt_err_t mlx90392_single_measurement(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
 {
-    rt_uint8_t status = mlx90392_start_measurement(dev, X_FLAG | Y_FLAG | Z_FLAG | T_FLAG);
+    rt_uint8_t status = RT_EOK;
+    union mlx90392_stat1 stat1;
 
+    status = mlx90392_set_mode(dev, SINGLE_MEASUREMENT_MODE);
+
+    stat1.byte_val = 0;
+    while (stat1.drdy == 0)
+    {
+        status = mlx90392_get_stat1(dev, &stat1);
+        rt_thread_delay(100);
+    }
     // wait for DRDY signal if connected, otherwise delay appropriately
 //    if (DRDY_pin >= 0)
 //    {
@@ -1039,7 +1048,7 @@ static rt_err_t mlx90392_get_txyz_raw(struct mlx90392_device *dev, struct mlx903
 //      delay(this->convDelayMillis());
 //    }
 
-    status = mlx90392_read_measurement(dev, X_FLAG | Y_FLAG | Z_FLAG | T_FLAG, txyz);
+    status = mlx90392_get_xyz(dev, xyz);
 //    data = convertRaw(raw_txyz);
 
     return status;
@@ -1425,10 +1434,11 @@ static void mlx90392(int argc, char **argv)
         {
             mlx90392_setup(dev);
         }
-        else if (!strcmp(argv[1], "readdata"))
+        else if (!strcmp(argv[1], "xyz"))
         {
-            struct mlx90392_txyz txyz;
-            mlx90392_get_txyz_raw(dev, &txyz);
+            struct mlx90392_xyz xyz;
+            mlx90392_single_measurement(dev, &xyz);
+            rt_kprintf("x = 0x%x, y = 0x%x, z = 0x%x\r\n", xyz.x, xyz.y, xyz.z);
         }
         else
         {

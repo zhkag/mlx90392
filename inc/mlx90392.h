@@ -36,14 +36,14 @@ union mlx90392_stat1
 
     struct
     {
-        rt_uint8_t stat1_7  : 1;
-        rt_uint8_t stat1_6  : 1;
-        rt_uint8_t stat1_5  : 1;
-        rt_uint8_t stat1_4  : 1;
-        rt_uint8_t rt       : 1;
-        rt_uint8_t stat1_2  : 1;
+        rt_uint8_t drdy     : 1;    //BIT0
         rt_uint8_t stat1_1  : 1;
-        rt_uint8_t drdy     : 1;
+        rt_uint8_t stat1_2  : 1;
+        rt_uint8_t rt       : 1;
+        rt_uint8_t stat1_4  : 1;
+        rt_uint8_t stat1_5  : 1;
+        rt_uint8_t stat1_6  : 1;
+        rt_uint8_t stat1_7  : 1;
     };
 };
 
@@ -53,14 +53,14 @@ union mlx90392_stat2
 
     struct
     {
-        rt_uint8_t stat2_7  : 1;
-        rt_uint8_t stat2_6  : 1;
-        rt_uint8_t stat2_5  : 1;
-        rt_uint8_t stat2_4  : 1;
-        rt_uint8_t stat2_3  : 1;
-        rt_uint8_t stat2_2  : 1;
+        rt_uint8_t hovf     : 1;    //BIT0
         rt_uint8_t dor      : 1;
-        rt_uint8_t hovf     : 1;
+        rt_uint8_t stat2_2  : 1;
+        rt_uint8_t stat2_3  : 1;
+        rt_uint8_t stat2_4  : 1;
+        rt_uint8_t stat2_5  : 1;
+        rt_uint8_t stat2_6  : 1;
+        rt_uint8_t stat2_7  : 1;
     };
 };
 
@@ -98,10 +98,10 @@ union mlx90392_osr_dig_filt
 
     struct
     {
-        rt_uint8_t osr_hall          : 1;
-        rt_uint8_t osr_temp          : 1;
-        rt_uint8_t dig_filt_hall_xy  : 3;
         rt_uint8_t dig_filt_temp     : 3;
+        rt_uint8_t dig_filt_hall_xy  : 3;
+        rt_uint8_t osr_temp          : 1;
+        rt_uint8_t osr_hall          : 1;    //BIT7
     };
 };
 
@@ -111,12 +111,12 @@ union mlx90392_cust_ctrl
 
     struct
     {
-        rt_uint8_t dnc1_1            : 1;
-        rt_uint8_t dnc2_0            : 1;
-        rt_uint8_t t_comp_en        : 1;
-        rt_uint8_t dnc3_1            : 1;
-        rt_uint8_t cust_ctrl3       : 1;
         rt_uint8_t dig_filt_hall_z  : 3;
+        rt_uint8_t cust_ctrl3       : 1;
+        rt_uint8_t dnc3_1           : 1;
+        rt_uint8_t t_comp_en        : 1;
+        rt_uint8_t dnc2_0           : 1;
+        rt_uint8_t dnc1_1           : 1;    //BIT7
     };
 };
 
