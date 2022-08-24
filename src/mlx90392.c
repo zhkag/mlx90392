@@ -85,54 +85,6 @@ const float mlx90392_tconv[8][4] =
     {25.65, 50.61, 100.53, 200.37},
 };
 
-rt_err_t mlx90392_transfer(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt_uint8_t send_len, rt_uint8_t *recv_buf, rt_uint8_t recv_len)
-{
-    rt_err_t res = RT_EOK;
-
-    if (dev->bus->type == RT_Device_Class_I2CBUS)
-    {
-#ifdef RT_USING_I2C
-        struct rt_i2c_msg msgs[2];
-
-        msgs[0].addr  = dev->i2c_addr;    /* I2C Slave address */
-        msgs[0].flags = RT_I2C_WR;        /* Write flag */
-        msgs[0].buf   = send_buf;         /* Write data pointer */
-        msgs[0].len   = send_len;         /* Number of bytes write */
-
-        msgs[1].addr  = dev->i2c_addr;    /* I2C Slave address */
-        msgs[1].flags = RT_I2C_RD;        /* Read flag */
-        msgs[1].buf   = recv_buf;         /* Read data pointer */
-        msgs[1].len   = recv_len;         /* Number of bytes read */
-
-        if (rt_i2c_transfer((struct rt_i2c_bus_device *)dev->bus, msgs, 2) == 2)
-        {
-            res = RT_EOK;
-        }
-        else
-        {
-            rt_kprintf("rt_i2c_transfer error\r\n");
-            res = -RT_ERROR;
-        }
-#endif
-    }
-    else
-    {
-        
-    }
-
-    return res;
-}
-
-rt_err_t mlx90392_reset(struct mlx90392_device *dev)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = CMD_RESET;
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
 rt_err_t mlx90392_start_burst(struct mlx90392_device *dev, rt_int8_t zyxt)
 {
     rt_uint8_t send_buf[2];
@@ -172,24 +124,6 @@ rt_err_t mlx90392_start_measurement(struct mlx90392_device *dev, rt_int8_t zyxt)
  *
  * @return the reading status, RT_EOK represents reading the value of register successfully.
  */
-static rt_err_t mlx90392_read_reg(struct mlx90392_device *dev, rt_uint8_t reg, rt_uint16_t *val)
-{
-    rt_err_t res = RT_EOK;
-
-    rt_uint8_t send_buf[10];
-    rt_uint8_t recv_buf[3];
-
-    send_buf[0] = reg;
-
-    res = mlx90392_transfer(dev, send_buf, 1, recv_buf, 1);
-    if (res == RT_EOK)
-    {
-        *val = recv_buf[0];
-    }
-
-    return res;
-}
-
 static rt_err_t mlx90392_mem_direct_read(struct mlx90392_device *dev, rt_uint8_t *recv_buf, rt_uint8_t recv_len)
 {
     rt_err_t res = RT_EOK;
@@ -223,6 +157,15 @@ static rt_err_t mlx90392_mem_direct_read(struct mlx90392_device *dev, rt_uint8_t
     return res;
 }
 
+/**
+ * This function reads the value of register for mlx90392
+ *
+ * @param dev the pointer of device driver structure
+ * @param reg the register for mlx90392
+ * @param val read data pointer
+ *
+ * @return the reading status, RT_EOK represents reading the value of register successfully.
+ */
 static rt_err_t mlx90392_mem_read(struct mlx90392_device *dev, rt_uint8_t start_addr, rt_uint8_t *recv_buf, rt_uint8_t recv_len)
 {
     rt_err_t res = RT_EOK;
@@ -262,6 +205,15 @@ static rt_err_t mlx90392_mem_read(struct mlx90392_device *dev, rt_uint8_t start_
     return res;
 }
 
+/**
+ * This function reads the value of register for mlx90392
+ *
+ * @param dev the pointer of device driver structure
+ * @param reg the register for mlx90392
+ * @param val read data pointer
+ *
+ * @return the reading status, RT_EOK represents reading the value of register successfully.
+ */
 //send_buf = start register address + data1 + data2 + ...
 static rt_err_t mlx90392_mem_write(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt_uint8_t send_len)
 {
@@ -568,77 +520,77 @@ rt_int16_t mlx90392_convert_temperature(rt_uint16_t raw)
     rt_kprintf("t = %d.%d C\r\n", (int)temperature, ((int)(temperature*10))%10);
 }
 
-rt_err_t mlx90392_convert_measurement(struct mlx90392_device *dev, struct mlx90392_txyz txyz)
+rt_err_t mlx90392_convert_measurement(struct mlx90392_device *dev, struct mlx90392_xyz xyz)
 {
-    mlx90392_resolution_t res_x = MLX90392_RES_18;
-    mlx90392_resolution_t res_y = MLX90392_RES_18;
-    mlx90392_resolution_t res_z = MLX90392_RES_18;
-
-    mlx90392_gain_t gain = 3;
-
-    float x, y, z;
-
-    if (res_x == MLX90392_RES_18)
-    {
-        txyz.x -= 0x8000;
-        rt_kprintf("txyz.x - 0x8000 = 0x%x\r\n", txyz.x);
-    }
-
-    if (res_x == MLX90392_RES_19)
-    {
-        txyz.x -= 0x4000;
-        rt_kprintf("txyz.x - 0x4000 = 0x%x\r\n", txyz.x);
-    }
-
-    if (res_y == MLX90392_RES_18)
-    {
-        txyz.y -= 0x8000;
-        rt_kprintf("txyz.y - 0x8000 = 0x%x\r\n", txyz.y);
-    }
-
-    if (res_y == MLX90392_RES_19)
-    {
-        txyz.y -= 0x4000;
-        rt_kprintf("txyz.x - 0x4000 = 0x%x\r\n", txyz.y);
-    }
-
-    if (res_z == MLX90392_RES_18)
-    {
-        txyz.z -= 0x8000;
-        rt_kprintf("txyz.z - 0x8000 = 0x%x\r\n", txyz.z);
-    }
-
-    if (res_z == MLX90392_RES_19)
-    {
-        txyz.z -= 0x4000;
-        rt_kprintf("txyz.z - 0x4000 = 0x%x\r\n", txyz.z);
-    }
-
-    x = (float)txyz.x * mlx90392_lsb_lookup[0][gain][res_x][0];
-    y = (float)txyz.y * mlx90392_lsb_lookup[0][gain][res_y][0];
-    z = (float)txyz.z * mlx90392_lsb_lookup[0][gain][res_z][1];
-
-    // rt_kprintf("%.3f uT %.3f uT %.3f uT\r\n", x, y, z);
-    // rt_kprintf("0x%xuT 0x%xuT 0x%xuT\r\n", x, y, z);
-    rt_kprintf("%duT %duT %duT\r\n", (int)x, (int)y, (int)z);
+//    mlx90392_resolution_t res_x = MLX90392_RES_18;
+//    mlx90392_resolution_t res_y = MLX90392_RES_18;
+//    mlx90392_resolution_t res_z = MLX90392_RES_18;
+//
+//    mlx90392_gain_t gain = 3;
+//
+//    float x, y, z;
+//
+//    if (res_x == MLX90392_RES_18)
+//    {
+//        txyz.x -= 0x8000;
+//        rt_kprintf("txyz.x - 0x8000 = 0x%x\r\n", txyz.x);
+//    }
+//
+//    if (res_x == MLX90392_RES_19)
+//    {
+//        txyz.x -= 0x4000;
+//        rt_kprintf("txyz.x - 0x4000 = 0x%x\r\n", txyz.x);
+//    }
+//
+//    if (res_y == MLX90392_RES_18)
+//    {
+//        txyz.y -= 0x8000;
+//        rt_kprintf("txyz.y - 0x8000 = 0x%x\r\n", txyz.y);
+//    }
+//
+//    if (res_y == MLX90392_RES_19)
+//    {
+//        txyz.y -= 0x4000;
+//        rt_kprintf("txyz.x - 0x4000 = 0x%x\r\n", txyz.y);
+//    }
+//
+//    if (res_z == MLX90392_RES_18)
+//    {
+//        txyz.z -= 0x8000;
+//        rt_kprintf("txyz.z - 0x8000 = 0x%x\r\n", txyz.z);
+//    }
+//
+//    if (res_z == MLX90392_RES_19)
+//    {
+//        txyz.z -= 0x4000;
+//        rt_kprintf("txyz.z - 0x4000 = 0x%x\r\n", txyz.z);
+//    }
+//
+//    x = (float)txyz.x * mlx90392_lsb_lookup[0][gain][res_x][0];
+//    y = (float)txyz.y * mlx90392_lsb_lookup[0][gain][res_y][0];
+//    z = (float)txyz.z * mlx90392_lsb_lookup[0][gain][res_z][1];
+//
+//    // rt_kprintf("%.3f uT %.3f uT %.3f uT\r\n", x, y, z);
+//    // rt_kprintf("0x%xuT 0x%xuT 0x%xuT\r\n", x, y, z);
+//    rt_kprintf("%duT %duT %duT\r\n", (int)x, (int)y, (int)z);
 }
 
 rt_err_t mlx90392_set_hallconf(struct mlx90392_device *dev, rt_uint8_t hallconf)
 {
     rt_err_t res = 0;
 
-    rt_uint16_t register_val;
-    union mlx90392_register0 reg;
-
-    res = mlx90392_read_reg(dev, 0, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    reg.hallconf = hallconf;
-    res = mlx90392_write_reg(dev, 0, reg.word_val);
-    if (res == -RT_ERROR)
-        return res;
+//    rt_uint16_t register_val;
+//    union mlx90392_register0 reg;
+//
+//    res = mlx90392_read_reg(dev, 0, &register_val);
+//    if (res == -RT_ERROR)
+//        return res;
+//
+//    reg.word_val = register_val;
+//    reg.hallconf = hallconf;
+//    res = mlx90392_write_reg(dev, 0, reg.word_val);
+//    if (res == -RT_ERROR)
+//        return res;
         
     return res;
 }
@@ -648,18 +600,18 @@ rt_err_t mlx90392_set_oversampling(struct mlx90392_device *dev, mlx90392_oversam
 {
     rt_err_t res = 0;
 
-    rt_uint16_t register_val;
-    union mlx90392_register2 reg;
-
-    res = mlx90392_read_reg(dev, 2, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    reg.osr = osr;
-    res = mlx90392_write_reg(dev, 2, reg.word_val);
-    if (res == -RT_ERROR)
-        return res;
+//    rt_uint16_t register_val;
+//    union mlx90392_register2 reg;
+//
+//    res = mlx90392_read_reg(dev, 2, &register_val);
+//    if (res == -RT_ERROR)
+//        return res;
+//
+//    reg.word_val = register_val;
+//    reg.osr = osr;
+//    res = mlx90392_write_reg(dev, 2, reg.word_val);
+//    if (res == -RT_ERROR)
+//        return res;
 
     return res;
 }
@@ -668,15 +620,15 @@ rt_err_t mlx90392_get_oversampling(struct mlx90392_device *dev, mlx90392_oversam
 {
     rt_err_t res = 0;
 
-    rt_uint16_t register_val;
-    union mlx90392_register2 reg;
-
-    res = mlx90392_read_reg(dev, 2, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    *osr = reg.osr;
+//    rt_uint16_t register_val;
+//    union mlx90392_register2 reg;
+//
+//    res = mlx90392_read_reg(dev, 2, &register_val);
+//    if (res == -RT_ERROR)
+//        return res;
+//
+//    reg.word_val = register_val;
+//    *osr = reg.osr;
         
     return res;
 }
@@ -685,18 +637,18 @@ rt_err_t mlx90392_set_digital_filtering(struct mlx90392_device *dev, mlx90392_fi
 {
     rt_err_t res = 0;
 
-    rt_uint16_t register_val;
-    union mlx90392_register2 reg;
-
-    res = mlx90392_read_reg(dev, 2, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    reg.dig_filt = dig_filt;
-    res = mlx90392_write_reg(dev, 2, reg.word_val);
-    if (res == -RT_ERROR)
-        return res;
+//    rt_uint16_t register_val;
+//    union mlx90392_register2 reg;
+//
+//    res = mlx90392_read_reg(dev, 2, &register_val);
+//    if (res == -RT_ERROR)
+//        return res;
+//
+//    reg.word_val = register_val;
+//    reg.dig_filt = dig_filt;
+//    res = mlx90392_write_reg(dev, 2, reg.word_val);
+//    if (res == -RT_ERROR)
+//        return res;
 
     return res;
 }
@@ -705,15 +657,15 @@ rt_err_t mlx90392_get_digital_filtering(struct mlx90392_device *dev, mlx90392_fi
 {
     rt_err_t res = 0;
 
-    rt_uint16_t register_val;
-    union mlx90392_register2 reg;
-
-    res = mlx90392_read_reg(dev, 2, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    *dig_filt = reg.dig_filt;
+//    rt_uint16_t register_val;
+//    union mlx90392_register2 reg;
+//
+//    res = mlx90392_read_reg(dev, 2, &register_val);
+//    if (res == -RT_ERROR)
+//        return res;
+//
+//    reg.word_val = register_val;
+//    *dig_filt = reg.dig_filt;
 
     return res;
 }
@@ -1012,10 +964,6 @@ static void mlx90392(int argc, char **argv)
             rt_kprintf("Please probe mlx90392 first!\n");
             return;
         }
-        else if (!strcmp(argv[1], "rt"))
-        {
-            mlx90392_reset(dev);
-        }
         else if (!strcmp(argv[1], "id"))
         {
             rt_uint8_t id[2];
@@ -1054,29 +1002,10 @@ static void mlx90392(int argc, char **argv)
         }
         else if (!strcmp(argv[1], "rr"))
         {
-            union mlx90392_register0 reg0;
-            union mlx90392_register1 reg1;
-            union mlx90392_register2 reg2;
-            union mlx90392_register3 reg3;
+            rt_uint8_t val;
+            mlx90392_mem_read(dev, atoi(argv[2]), &val, 1);
 
-            mlx90392_read_reg(dev, atoi(argv[2]), &register_val);
-            rt_kprintf("Reading REG[%d] = 0x%x...\r\n", atoi(argv[2]), register_val);
-
-            switch (atoi(argv[2]))
-            {
-            case 0:
-                reg0.word_val = register_val;
-                rt_kprintf("REG[0] = 0x%x\r\n", reg0.word_val);
-                rt_kprintf("[BIT0-3] HALLCONF = 0x%x - Hall plate spinning rate adjustment\r\n", reg0.hallconf);
-                rt_kprintf("[BIT4-6] GAIN_SEL = 0x%x - Analog chain gain setting, factor 5 between min and max code\r\n", reg0.gain_sel);
-                rt_kprintf("[BIT7-7] Z_SERIES = 0x%x - Enable all plates for Z-measurement\r\n", reg0.z_series);
-                rt_kprintf("[BIT8-8] BITS     = 0x%x - Enable the on-chip coil, applying a Z-field[Built-in Self Test]\r\n", reg0.bist);
-                rt_kprintf("[BIT9-F] ANA_RESERVED_LOW = 0x%x - Reserved IO trimming bits\r\n", reg0.ana_reserved_low);
-                break;
-            default:
-                rt_kprintf("REG[%d] = 0x%x\r\n", atoi(argv[2]), register_val);
-                break;
-            }
+            rt_kprintf("Reading REG[%d] = 0x%x...\r\n", atoi(argv[2]), val);
         }
         else if (!strcmp(argv[1], "setup"))
         {
