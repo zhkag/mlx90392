@@ -482,7 +482,7 @@ rt_err_t mlx90392_get_osr_dig_filt(struct mlx90392_device *dev, union mlx90392_o
 {
     rt_err_t res = RT_EOK;
 
-    res = mlx90392_mem_read(dev, 0x14, val, 1);
+    res = mlx90392_mem_read(dev, 0x14, (rt_uint8_t *)val, 1);
     if (res != RT_EOK)
     {
         rt_kprintf("Get OSR_DIG_FILT error\r\n");
@@ -511,7 +511,7 @@ rt_err_t mlx90392_get_cust_ctrl(struct mlx90392_device *dev, union mlx90392_cust
 {
     rt_err_t res = RT_EOK;
 
-    res = mlx90392_mem_read(dev, 0x15, val, 1);
+    res = mlx90392_mem_read(dev, 0x15, (rt_uint8_t *)val, 1);
     if (res != RT_EOK)
     {
         rt_kprintf("Get CUST_CTRL error\r\n");
@@ -554,107 +554,6 @@ rt_err_t mlx90392_get_xyz(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
 
 
 
-static rt_err_t mlx90392_read_regs(struct mlx90392_device *dev, rt_uint8_t start_addr, rt_uint8_t *recv_buf, rt_uint8_t len)
-{
-    rt_err_t res = RT_EOK;
-
-    rt_uint8_t send_buf[2];
-
-    send_buf[0] = start_addr;
-
-    res = mlx90392_transfer(dev, send_buf, 1, recv_buf, len);
-    if (res != RT_EOK)
-    {
-        rt_kprintf("error\r\n");
-    }
-
-    return res;
-}
-
-/**
- * This function writes the value of the register for mlx90392
- *
- * @param dev the pointer of device driver structure
- * @param reg the register for mlx90392
- * @param val value to write
- *
- * @return the writing status, RT_EOK represents writing the value of the register successfully.
- */
-static rt_err_t mlx90392_write_reg(struct mlx90392_device *dev, rt_uint8_t reg, rt_uint16_t val)
-{
-    rt_err_t res = RT_EOK;
-
-    rt_uint8_t recv_buf[3];
-    rt_uint8_t send_buf[] =
-    {
-        CMD_WRITE_REGISTER,
-        (val&0xFF00) >> 8,
-        val&0x00FF,
-        reg << 2
-    };
-
-    res = mlx90392_transfer(dev, send_buf, 4, recv_buf, 1);
-
-    return res;
-}
-
-static int count_set_bits(int N)
-{
-    int result = 0;
-
-    while (N)
-    {
-        result++;
-        N &=N-1;
-    }
-
-    return result;
-}
-
-rt_err_t mlx90392_read_measurement(struct mlx90392_device *dev, rt_int8_t zyxt, struct mlx90392_txyz *txyz)
-{
-    rt_err_t res = RT_EOK;
-
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[10];
-
-    send_buf[0] = (CMD_READ_MEASUREMENT)|(zyxt);
-    for (int i=0; i<2*count_set_bits(zyxt); i++)
-    {
-        send_buf[i+2] = 0x00;
-    }
-
-    res = mlx90392_transfer(dev, send_buf, 1, recv_buf, 1+2*count_set_bits(zyxt));
-    if (res == RT_EOK)
-    {
-        int idx = 1;
-        if (zyxt & 0x1)
-        {
-            txyz->t = ((rt_uint16_t)recv_buf[idx]) << 8 | recv_buf[idx+1];
-            idx = idx + 2;
-        }
-
-        if (zyxt & 0x2)
-        {
-            txyz->x = ((rt_uint16_t)recv_buf[idx]) << 8 | recv_buf[idx+1];
-            idx = idx + 2;
-        }
-
-        if (zyxt & 0x4)
-        {
-            txyz->y = ((rt_uint16_t)recv_buf[idx]) << 8 | recv_buf[idx+1];
-            idx = idx + 2;
-        }
-
-        if (zyxt & 0x8)
-        {
-            txyz->z = ((rt_uint16_t)recv_buf[idx]) << 8 | recv_buf[idx+1];
-            idx = idx + 2;
-        }
-    }
-
-    return res;
-}
 
 /*
     Temperature sensor resolution       = 45.2 LSB/C
@@ -678,10 +577,6 @@ rt_err_t mlx90392_convert_measurement(struct mlx90392_device *dev, struct mlx903
     mlx90392_gain_t gain = 3;
 
     float x, y, z;
-
-    mlx90392_get_resolution(dev, &res_x, &res_y, &res_z);
-
-    mlx90392_get_gain_sel(dev, &gain);
 
     if (res_x == MLX90392_RES_18)
     {
@@ -748,141 +643,6 @@ rt_err_t mlx90392_set_hallconf(struct mlx90392_device *dev, rt_uint8_t hallconf)
     return res;
 }
 
-rt_err_t mlx90392_set_gain_sel(struct mlx90392_device *dev, mlx90392_gain_t gain)
-{
-    rt_err_t res = 0;
-
-    rt_uint16_t register_val;
-    union mlx90392_register0 reg;
-
-    res = mlx90392_read_reg(dev, 0, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    reg.gain_sel = gain;
-    
-    res = mlx90392_write_reg(dev, 0, reg.word_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    return res;
-}
-
-rt_err_t mlx90392_get_gain_sel(struct mlx90392_device *dev, mlx90392_gain_t *gain)
-{
-    rt_err_t res = 0;
-
-    rt_uint16_t register_val;
-    union mlx90392_register0 reg;
-
-    res = mlx90392_read_reg(dev, 0, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    *gain = reg.gain_sel;
-    
-    rt_kprintf("gain = 0x%x\r\n", *gain);
-
-    return res;
-}
-
-rt_uint8_t mlx90392_set_burst_sel(struct mlx90392_device *dev, rt_uint8_t burst_sel)
-{
-    rt_uint16_t register_val;
-    union mlx90392_register1 reg;
-
-    rt_uint8_t status1 = mlx90392_read_reg(dev, 1, &register_val);
-    reg.word_val = register_val;
-    reg.burst_sel = burst_sel;
-    rt_uint8_t status2 = mlx90392_write_reg(dev, 1, reg.word_val);
-
-    return (status1) | (status2);
-}
-
-rt_uint8_t mlx90392_set_external_trigger(struct mlx90392_device *dev, rt_uint8_t ext_trg)
-{
-    rt_uint16_t register_val;
-    union mlx90392_register1 reg;
-
-    rt_uint8_t status1 = mlx90392_read_reg(dev, 1, &register_val);
-    reg.word_val = register_val;
-    reg.ext_trg = ext_trg;
-    rt_uint8_t status2 = mlx90392_write_reg(dev, 1, reg.word_val);
-
-    return (status1) | (status2);
-}
-
-rt_uint8_t mlx90392_set_trigger_interrup_sel(struct mlx90392_device *dev, rt_uint8_t trig_int)
-{
-    rt_uint16_t register_val;
-    union mlx90392_register1 reg;
-
-    rt_uint8_t status1 = mlx90392_read_reg(dev, 1, &register_val);
-    reg.word_val = register_val;
-    reg.trig_int = trig_int;
-    rt_uint8_t status2 = mlx90392_write_reg(dev, 1, reg.word_val);
-
-    return (status1) | (status2);
-}
-
-rt_uint8_t mlx90392_set_temperature_compensation(struct mlx90392_device *dev, rt_uint8_t on_off)
-{
-    rt_uint16_t register_val;
-    union mlx90392_register1 reg;
-
-    rt_uint8_t status1 = mlx90392_read_reg(dev, 1, &register_val);
-    reg.word_val = register_val;
-    reg.tcmp_en = on_off;
-    rt_uint8_t status2 = mlx90392_write_reg(dev, 1, reg.word_val);
-
-    return (status1) | (status2);
-}
-
-rt_err_t mlx90392_set_resolution(struct mlx90392_device *dev, mlx90392_resolution_t res_x, mlx90392_resolution_t res_y, mlx90392_resolution_t res_z)
-{
-    rt_err_t res = 0;
-
-    rt_uint16_t register_val;
-    union mlx90392_register2 reg;
-
-    res = mlx90392_read_reg(dev, 2, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    reg.res_x = res_x;
-    reg.res_y = res_y;
-    reg.res_z = res_z;
-    
-    res = mlx90392_write_reg(dev, 2, reg.word_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    return res;
-}
-
-rt_err_t mlx90392_get_resolution(struct mlx90392_device *dev, mlx90392_resolution_t *res_x, mlx90392_resolution_t *res_y, mlx90392_resolution_t *res_z)
-{
-    rt_err_t res = 0;
-
-    rt_uint16_t register_val;
-    union mlx90392_register2 reg;
-
-    res = mlx90392_read_reg(dev, 2, &register_val);
-    if (res == -RT_ERROR)
-        return res;
-
-    reg.word_val = register_val;
-    *res_x = reg.res_x;
-    *res_y = reg.res_y;
-    *res_z = reg.res_z;
-    
-    rt_kprintf("res_x = 0x%x, res_y = 0x%x, res_z = 0x%x\r\n", *res_x, *res_y, *res_z);
-
-    return res;
-}
 
 rt_err_t mlx90392_set_oversampling(struct mlx90392_device *dev, mlx90392_oversampling_t osr)
 {
@@ -958,59 +718,17 @@ rt_err_t mlx90392_get_digital_filtering(struct mlx90392_device *dev, mlx90392_fi
     return res;
 }
 
-rt_uint8_t mlx90392_set_offset_x(struct mlx90392_device *dev, rt_uint16_t offset)
-{
-    rt_uint8_t status = mlx90392_write_reg(dev, 4, offset);
-
-    return status;
-}
-
-rt_uint8_t mlx90392_set_offset_y(struct mlx90392_device *dev, rt_uint16_t offset)
-{
-    rt_uint8_t status = mlx90392_write_reg(dev, 5, offset);
-
-    return status;
-}
-
-rt_uint8_t mlx90392_set_offset_z(struct mlx90392_device *dev, rt_uint16_t offset)
-{
-    rt_uint8_t status = mlx90392_write_reg(dev, 6, offset);
-
-    return status;
-}
-
-rt_uint8_t mlx90392_set_woxy_threshold(struct mlx90392_device *dev, rt_uint16_t woxy_threshold)
-{
-    rt_uint8_t status = mlx90392_write_reg(dev, 7, woxy_threshold);
-
-    return status;
-}
-
-rt_uint8_t mlx90392_set_woz_threshold(struct mlx90392_device *dev, rt_uint16_t woz_threshold)
-{
-    rt_uint8_t status = mlx90392_write_reg(dev, 6, woz_threshold);
-
-    return status;
-}
-
-rt_uint8_t mlx90392_set_wot_threshold(struct mlx90392_device *dev, rt_uint16_t wot_threshold)
-{
-    rt_uint8_t status = mlx90392_write_reg(dev, 6, wot_threshold);
-
-    return status;
-}
-
 void mlx90392_setup(struct mlx90392_device *dev)
 {
 //    mlx90392_reset(dev);
 
 //    rt_thread_delay(10000);
 
-    mlx90392_set_gain_sel(dev, 4);
-    mlx90392_set_resolution(dev, 0, 0, 0);
-    mlx90392_set_oversampling(dev, 3);
-    mlx90392_set_digital_filtering(dev, 7);
-    mlx90392_set_temperature_compensation(dev, 0);
+//    mlx90392_set_gain_sel(dev, 4);
+//    mlx90392_set_resolution(dev, 0, 0, 0);
+//    mlx90392_set_oversampling(dev, 3);
+//    mlx90392_set_digital_filtering(dev, 7);
+//    mlx90392_set_temperature_compensation(dev, 0);
 }
 
 /**
@@ -1034,19 +752,6 @@ static rt_err_t mlx90392_single_measurement(struct mlx90392_device *dev, struct 
         status = mlx90392_get_stat1(dev, &stat1);
         rt_thread_delay(100);
     }
-    // wait for DRDY signal if connected, otherwise delay appropriately
-//    if (DRDY_pin >= 0)
-//    {
-//      delayMicroseconds(600);
-//      while (!digitalRead(DRDY_pin))
-//      {
-//        // busy wait
-//      }
-//    }
-//    else
-//    {
-//      delay(this->convDelayMillis());
-//    }
 
     status = mlx90392_get_xyz(dev, xyz);
 //    data = convertRaw(raw_txyz);
@@ -1311,17 +1016,6 @@ static void mlx90392(int argc, char **argv)
         {
             mlx90392_reset(dev);
         }
-        else if (!strcmp(argv[1], "rrs"))
-        {
-            rt_uint8_t regs[0x16];
-            rt_uint8_t start_addr = atoi(argv[2]);
-            rt_uint8_t len = atoi(argv[3]);
-
-            mlx90392_read_regs(dev, start_addr, regs, len);
-
-            for (int i=0; i<len; i++)
-                rt_kprintf("Reading REG[%d] = 0x%x\r\n", start_addr+i, regs[i]);
-        }
         else if (!strcmp(argv[1], "id"))
         {
             rt_uint8_t id[2];
@@ -1384,52 +1078,6 @@ static void mlx90392(int argc, char **argv)
                 break;
             }
         }
-        else if (!strcmp(argv[1], "wr"))
-        {
-            mlx90392_write_reg(dev, atoi(argv[2]), atoi(argv[3]));
-        }
-        else if (!strcmp(argv[1], "sm"))
-        {
-            mlx90392_start_measurement(dev, X_FLAG | Y_FLAG | Z_FLAG | T_FLAG);
-        }        
-        else if (!strcmp(argv[1], "rm"))
-        {
-            struct mlx90392_txyz txyz;
-
-            mlx90392_start_measurement(dev, X_FLAG | Y_FLAG | Z_FLAG | T_FLAG);
-            
-            // rt_thread_delay(mlx90392_tconv[_dig_filt][_osr] + 10);
-            rt_thread_delay(mlx90392_tconv[0][0] + 10);
-
-            mlx90392_read_measurement(dev, X_FLAG | Y_FLAG | Z_FLAG | T_FLAG, &txyz);
-
-            mlx90392_convert_temperature(txyz.t);
-            mlx90392_convert_measurement(dev, txyz);
-        }                
-        else if (!strcmp(argv[1], "set_gain"))
-        {
-            mlx90392_set_gain_sel(dev, atoi(argv[2]));
-        }                
-        else if (!strcmp(argv[1], "get_gain"))
-        {
-            mlx90392_gain_t gain;
-
-            mlx90392_get_gain_sel(dev, &gain);
-            rt_kprintf("gain is 0x%x\r\n", gain);
-        }                                
-        else if (!strcmp(argv[1], "set_resolution"))
-        {
-            mlx90392_set_resolution(dev, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]));
-        }                
-        else if (!strcmp(argv[1], "get_resolution"))
-        {
-            mlx90392_resolution_t x;
-            mlx90392_resolution_t y;
-            mlx90392_resolution_t z;
-
-            mlx90392_get_resolution(dev, &x, &y, &z);
-            rt_kprintf("resolution is 0x%x 0x%x 0x%x\r\n", x, y, z);
-        }                                        
         else if (!strcmp(argv[1], "setup"))
         {
             mlx90392_setup(dev);
