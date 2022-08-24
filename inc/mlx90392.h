@@ -30,6 +30,97 @@ enum pn
 #define MLX90392_I2C_ADDRESS                    (0x3C)        // address pin A0,A1 low (GND), default for MLX90392
 #endif
 
+union mlx90392_stat1
+{
+    rt_uint8_t byte_val;
+
+    struct
+    {
+        rt_uint8_t stat1_7  : 1;
+        rt_uint8_t stat1_6  : 1;
+        rt_uint8_t stat1_5  : 1;
+        rt_uint8_t stat1_4  : 1;
+        rt_uint8_t rt       : 1;
+        rt_uint8_t stat1_2  : 1;
+        rt_uint8_t stat1_1  : 1;
+        rt_uint8_t drdy     : 1;
+    };
+};
+
+union mlx90392_stat2
+{
+    rt_uint8_t byte_val;
+
+    struct
+    {
+        rt_uint8_t stat2_7  : 1;
+        rt_uint8_t stat2_6  : 1;
+        rt_uint8_t stat2_5  : 1;
+        rt_uint8_t stat2_4  : 1;
+        rt_uint8_t stat2_3  : 1;
+        rt_uint8_t stat2_2  : 1;
+        rt_uint8_t dor      : 1;
+        rt_uint8_t hovf     : 1;
+    };
+};
+
+/* 3-axis data structure */
+struct mlx90392_xyz
+{
+    rt_int16_t x;
+    rt_int16_t y;
+    rt_int16_t z;
+};
+
+enum mlx90392_mode
+{
+    POWER_DOWN_MODE                     = 0x0,
+    SINGLE_MEASUREMENT_MODE             = 0x1,
+    CONTINUOUS_MEASUREMENT_MODE_10HZ    = 0x2,
+    CONTINUOUS_MEASUREMENT_MODE_20HZ    = 0x3,
+    CONTINUOUS_MEASUREMENT_MODE_50HZ    = 0x4,
+    CONTINUOUS_MEASUREMENT_MODE_100HZ   = 0x5,
+//    SELF_TEST_MODE                      = 0x6,
+//    POWER_DOWN_MODE                     = 0x7,
+//    POWER_DOWN_MODE                     = 0x8,
+//    SINGLE_MEASUREMENT_MODE             = 0x9,
+    CONTINUOUS_MEASUREMENT_MODE_200HZ   = 0xA,
+    CONTINUOUS_MEASUREMENT_MODE_500HZ   = 0xB,
+    CONTINUOUS_MEASUREMENT_MODE_700HZ   = 0xC,
+    CONTINUOUS_MEASUREMENT_MODE_1400HZ  = 0xD,
+//    SELF_TEST_MODE                      = 0xE,
+//    POWER_DOWN_MODE                     = 0xF
+};
+
+union mlx90392_osr_dig_filt
+{
+    rt_uint8_t byte_val;
+
+    struct
+    {
+        rt_uint8_t osr_hall          : 1;
+        rt_uint8_t osr_temp          : 1;
+        rt_uint8_t dig_filt_hall_xy  : 3;
+        rt_uint8_t dig_filt_temp     : 3;
+    };
+};
+
+union mlx90392_cust_ctrl
+{
+    rt_uint8_t byte_val;
+
+    struct
+    {
+        rt_uint8_t dnc1_1            : 1;
+        rt_uint8_t dnc2_0            : 1;
+        rt_uint8_t t_comp_en        : 1;
+        rt_uint8_t dnc3_1            : 1;
+        rt_uint8_t cust_ctrl3       : 1;
+        rt_uint8_t dig_filt_hall_z  : 3;
+    };
+};
+
+
 enum cmd
 {
     CMD_NOP               = 0x00,

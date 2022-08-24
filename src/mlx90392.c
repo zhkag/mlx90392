@@ -123,16 +123,6 @@ rt_err_t mlx90392_transfer(struct mlx90392_device *dev, rt_uint8_t *send_buf, rt
     return res;
 }
 
-rt_err_t mlx90392_memory_store(struct mlx90392_device *dev)
-{
-    rt_uint8_t send_buf[2];
-    rt_uint8_t recv_buf[2];
-
-    send_buf[0] = CMD_MEMORY_STORE;
-
-    return(mlx90392_transfer(dev, send_buf, 1, recv_buf, 1));
-}
-
 rt_err_t mlx90392_reset(struct mlx90392_device *dev)
 {
     rt_uint8_t send_buf[2];
@@ -342,6 +332,227 @@ static rt_err_t mlx90392_address_reset(struct mlx90392_device *dev)
 
     return res;
 }
+
+static rt_err_t mlx90392_get_stat1(struct mlx90392_device *dev, union mlx90392_stat1 *stat1)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0x0, (rt_uint8_t *)stat1, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("error\r\n");
+    }
+    else
+    {
+        rt_kprintf("STAT1 = 0x%x\r\n", stat1->byte_val);
+    }
+
+    return res;
+}
+
+static rt_err_t mlx90392_get_stat2(struct mlx90392_device *dev, union mlx90392_stat2 *stat2)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0x7, (rt_uint8_t *)stat2, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("error\r\n");
+    }
+    else
+    {
+        rt_kprintf("STAT2 = 0x%x\r\n", stat2->byte_val);
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_x(struct mlx90392_device *dev, rt_int16_t *x)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x1, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *x = recv_buf[1]<<8 | recv_buf[0];
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_y(struct mlx90392_device *dev, rt_int16_t *y)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x3, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *y = recv_buf[1]<<8 | recv_buf[0];
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_z(struct mlx90392_device *dev, rt_int16_t *z)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x5, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *z = recv_buf[1]<<8 | recv_buf[0];
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_t(struct mlx90392_device *dev, rt_int16_t *t)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x8, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *t = recv_buf[1]<<8 | recv_buf[0];
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_cid(struct mlx90392_device *dev, rt_uint8_t *cid)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0xA, cid, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Read CID is error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_did(struct mlx90392_device *dev, rt_uint8_t *did)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0xB, did, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Read DID is error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_mode(struct mlx90392_device *dev, rt_uint8_t *mode)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0x10, mode, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Read MODE is error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_set_mode(struct mlx90392_device *dev, enum mlx90392_mode application_mode)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t send_buf[2];
+
+    send_buf[0] = 0x10;
+    send_buf[1] = application_mode;
+    res = mlx90392_mem_write(dev, send_buf, 2);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("set application mode error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_osr_dig_filt(struct mlx90392_device *dev, union mlx90392_osr_dig_filt *val)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0x14, val, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Get OSR_DIG_FILT error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_set_osr_dig_filt(struct mlx90392_device *dev, union mlx90392_osr_dig_filt val)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t send_buf[2];
+
+    send_buf[0] = 0x14;
+    send_buf[1] = val.byte_val;
+    res = mlx90392_mem_write(dev, send_buf, 2);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Set OSR_DIG_FILT error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_cust_ctrl(struct mlx90392_device *dev, union mlx90392_cust_ctrl *val)
+{
+    rt_err_t res = RT_EOK;
+
+    res = mlx90392_mem_read(dev, 0x15, val, 1);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Get CUST_CTRL error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_set_cust_ctrl(struct mlx90392_device *dev, union mlx90392_cust_ctrl val)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t send_buf[2];
+
+    send_buf[0] = 0x15;
+    send_buf[1] = val.byte_val;
+    res = mlx90392_mem_write(dev, send_buf, 2);
+    if (res != RT_EOK)
+    {
+        rt_kprintf("Set CUST_CTRL error\r\n");
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_xyz(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[6];
+
+    res = mlx90392_mem_read(dev, 0x1, recv_buf, 6);
+    if (res == RT_EOK)
+    {
+        xyz->x = recv_buf[1]<<8 | recv_buf[0];
+        xyz->y = recv_buf[3]<<8 | recv_buf[2];
+        xyz->z = recv_buf[5]<<8 | recv_buf[4];
+    }
+
+    return res;
+}
+
+
 
 static rt_err_t mlx90392_read_regs(struct mlx90392_device *dev, rt_uint8_t start_addr, rt_uint8_t *recv_buf, rt_uint8_t len)
 {
@@ -1111,6 +1322,32 @@ static void mlx90392(int argc, char **argv)
             mlx90392_mem_read(dev, start_addr, id, len);
             rt_kprintf("CID = 0x%x\r\n", id[0]);
             rt_kprintf("DID = 0x%x\r\n", id[1]);
+        }
+        else if (!strcmp(argv[1], "stat1"))
+        {
+            union mlx90392_stat1 stat1;
+            mlx90392_get_stat1(dev, &stat1);
+        }
+        else if (!strcmp(argv[1], "x"))
+        {
+            rt_int16_t x;
+
+            mlx90392_get_x(dev, &x);
+            rt_kprintf("x = 0x%x\r\n", x);
+        }
+        else if (!strcmp(argv[1], "y"))
+        {
+            rt_int16_t y;
+
+            mlx90392_get_y(dev, &y);
+            rt_kprintf("y = 0x%x\r\n", y);
+        }
+        else if (!strcmp(argv[1], "z"))
+        {
+            rt_int16_t z;
+
+            mlx90392_get_z(dev, &z);
+            rt_kprintf("z = 0x%x\r\n", z);
         }
         else if (!strcmp(argv[1], "rr"))
         {
