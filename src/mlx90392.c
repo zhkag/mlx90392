@@ -661,6 +661,66 @@ void mlx90392_setup(struct mlx90392_device *dev)
  *
  * @return the reading status, RT_EOK represents  reading the data successfully.
  */
+static rt_err_t mlx90392_continuous_measurement(struct mlx90392_device *dev, struct mlx90392_xyz *xyz, rt_uint8_t freq)
+{
+    rt_uint8_t status = RT_EOK;
+    union mlx90392_stat1 stat1;
+
+    switch (freq)
+    {
+    case 10:
+        rt_kprintf("10Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_10HZ);
+        break;
+    case 20:
+        rt_kprintf("20Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_20HZ);
+        break;
+    case 50:
+        rt_kprintf("50Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_50HZ);
+        break;
+    case 100:
+        rt_kprintf("100Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_100HZ);
+        break;
+    case 200:
+        rt_kprintf("200Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_200HZ);
+        break;
+    case 500:
+        rt_kprintf("500Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_500HZ);
+        break;
+    case 700:
+        rt_kprintf("700Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_700HZ);
+        break;
+    case 1400:
+        rt_kprintf("1400Hz");
+        status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_1400HZ);
+        break;
+    default:
+        rt_kprintf("wrong freqency\r\n");
+        break;
+    }
+
+    while (1)
+    {
+        status = mlx90392_get_stat1(dev, &stat1);
+
+        if (stat1.drdy == 1)
+        {
+            status = mlx90392_get_xyz(dev, xyz);
+            rt_kprintf("x = 0x%x, y = 0x%x, z = 0x%x\r\n", xyz->x, xyz->y, xyz->z);
+        }
+
+        rt_thread_delay(100);
+    }
+
+    return status;
+}
+
 static rt_err_t mlx90392_single_measurement(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
 {
     rt_uint8_t status = RT_EOK;
@@ -982,8 +1042,15 @@ static void mlx90392(int argc, char **argv)
         else if (!strcmp(argv[1], "xyz"))
         {
             struct mlx90392_xyz xyz;
+
             mlx90392_single_measurement(dev, &xyz);
             rt_kprintf("x = 0x%x, y = 0x%x, z = 0x%x\r\n", xyz.x, xyz.y, xyz.z);
+        }
+        else if (!strcmp(argv[1], "continuous"))
+        {
+            struct mlx90392_xyz xyz;
+
+            mlx90392_continuous_measurement(dev, &xyz, atoi(argv[2]));
         }
         else
         {
