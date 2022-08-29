@@ -331,6 +331,48 @@ rt_err_t mlx90392_get_z(struct mlx90392_device *dev, rt_int16_t *z)
     return res;
 }
 
+rt_err_t mlx90392_get_x_flux(struct mlx90392_device *dev, float *x)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x1, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *x = (float)(((rt_int16_t)recv_buf[1] << 8) | recv_buf[0])*MAGNETO10_MAG_FLUX_RESOLUTION;
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_y_flux(struct mlx90392_device *dev, float *y)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x3, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *y = (float)(((rt_int16_t)recv_buf[1] << 8) | recv_buf[0])*MAGNETO10_MAG_FLUX_RESOLUTION;
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_z_flux(struct mlx90392_device *dev, float *z)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x5, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *z = (float)(((rt_int16_t)recv_buf[1] << 8) | recv_buf[0])*MAGNETO10_MAG_FLUX_RESOLUTION;
+    }
+
+    return res;
+}
+
 rt_err_t mlx90392_get_t(struct mlx90392_device *dev, rt_int16_t *t)
 {
     rt_err_t res = RT_EOK;
@@ -340,6 +382,20 @@ rt_err_t mlx90392_get_t(struct mlx90392_device *dev, rt_int16_t *t)
     if (res == RT_EOK)
     {
         *t = recv_buf[1]<<8 | recv_buf[0];
+    }
+
+    return res;
+}
+
+rt_err_t mlx90392_get_temperature(struct mlx90392_device *dev, float *t)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[2];
+
+    res = mlx90392_mem_read(dev, 0x8, recv_buf, 2);
+    if (res == RT_EOK)
+    {
+        *t = (float)(((rt_int16_t)recv_buf[1] << 8 ) | recv_buf[0] ) / MAGNETO10_TEMPERATURE_RES;
     }
 
     return res;
@@ -474,6 +530,21 @@ rt_err_t mlx90392_get_xyz(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
     return res;
 }
 
+rt_err_t mlx90392_get_xyz_flux(struct mlx90392_device *dev, struct mlx90392_xyz_flux *xyz)
+{
+    rt_err_t res = RT_EOK;
+    rt_uint8_t recv_buf[6];
+
+    res = mlx90392_mem_read(dev, 0x1, recv_buf, 6);
+    if (res == RT_EOK)
+    {
+        xyz->x = (float)(((rt_int16_t)recv_buf[1] << 8) | recv_buf[0]) * MAGNETO10_MAG_FLUX_RESOLUTION;
+        xyz->y = (float)(((rt_int16_t)recv_buf[3] << 8) | recv_buf[2]) * MAGNETO10_MAG_FLUX_RESOLUTION;
+        xyz->z = (float)(((rt_int16_t)recv_buf[5] << 8) | recv_buf[4]) * MAGNETO10_MAG_FLUX_RESOLUTION;
+    }
+
+    return res;
+}
 
 
 
@@ -1027,6 +1098,13 @@ static void mlx90392(int argc, char **argv)
 
             mlx90392_get_z(dev, &z);
             rt_kprintf("z = 0x%x\r\n", z);
+        }
+        else if (!strcmp(argv[1], "t"))
+        {
+            float t;
+
+            mlx90392_get_temperature(dev, &t);
+            rt_kprintf("t = %d.%d\r\n", (rt_int16_t)t, (rt_uint16_t)t*10%10);
         }
         else if (!strcmp(argv[1], "rr"))
         {

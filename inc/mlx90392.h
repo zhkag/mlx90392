@@ -24,11 +24,31 @@ enum pn
 
 #if MLX90392 == MLX90392ELQ_AAA_010
 #define MLX90392_I2C_ADDRESS                    (0x0C)        // address pin A0,A1 low (GND), default for MLX90392
+
+/**
+ * @brief Magneto 10 magnetic flux resolution.
+ * @details Specified resolution for magnetic flux of Magneto 10 Click driver.
+ */
+#define MAGNETO10_MAG_FLUX_RESOLUTION   0.15    //uT/LSB
 #elif MLX90392 == MLX90392ELQ_AAA_011
 #define MLX90392_I2C_ADDRESS                    (0x0C)        // address pin A0,A1 low (GND), default for MLX90392
+
+/**
+ * @brief Magneto 10 magnetic flux resolution.
+ * @details Specified resolution for magnetic flux of Magneto 10 Click driver.
+ */
+#define MAGNETO10_MAG_FLUX_RESOLUTION   1.5     //uT/LSB
 #elif MLX90392 == MLX90392ELQ_AAA_013
 #define MLX90392_I2C_ADDRESS                    (0x3C)        // address pin A0,A1 low (GND), default for MLX90392
+
+/**
+ * @brief Magneto 10 magnetic flux resolution.
+ * @details Specified resolution for magnetic flux of Magneto 10 Click driver.
+ */
+#define MAGNETO10_MAG_FLUX_RESOLUTION   1.5     //uT/LSB
 #endif
+
+#define MAGNETO10_TEMPERATURE_RES       50.0
 
 union mlx90392_stat1
 {
@@ -70,6 +90,14 @@ struct mlx90392_xyz
     rt_int16_t x;
     rt_int16_t y;
     rt_int16_t z;
+};
+
+/* 3-axis data structure */
+struct mlx90392_xyz_flux
+{
+    float x;
+    float y;
+    float z;
 };
 
 enum mlx90392_mode
