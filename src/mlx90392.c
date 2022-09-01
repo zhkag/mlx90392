@@ -17,75 +17,6 @@
 #include <stdlib.h>
 
 /**
- * Lookup table to convert raw values to uT based on [HALLCONF][GAIN_SEL][RES][SENSxy, SENSz].
- */
-const float mlx90392_lsb_lookup[2][8][4][2] =
-{
-    /* HALLCONF = 0xC (default) */
-    {
-        /* GAIN_SEL = 0, 5x gain */
-        {{0.751, 1.210}, {1.502, 2.420}, {3.004, 4.840}, {6.009, 9.680}},
-        /* GAIN_SEL = 1, 4x gain */
-        {{0.601, 0.968}, {1.202, 1.936}, {2.403, 3.872}, {4.840, 7.744}},
-        /* GAIN_SEL = 2, 3x gain */
-        {{0.451, 0.726}, {0.901, 1.452}, {1.803, 2.904}, {3.605, 5.808}},
-        /* GAIN_SEL = 3, 2.5x gain */
-        {{0.376, 0.605}, {0.751, 1.210}, {1.502, 2.420}, {3.004, 4.840}},
-        /* GAIN_SEL = 4, 2x gain */
-        {{0.300, 0.484}, {0.601, 0.968}, {1.202, 1.936}, {2.403, 3.872}},
-        /* GAIN_SEL = 5, 1.667x gain */
-        {{0.250, 0.403}, {0.501, 0.807}, {1.001, 1.613}, {2.003, 3.227}},
-        /* GAIN_SEL = 6, 1.333x gain */
-        {{0.200, 0.323}, {0.401, 0.645}, {0.801, 1.291}, {1.602, 2.581}},
-        /* GAIN_SEL = 7, 1x gain */
-        {{0.150, 0.242}, {0.300, 0.484}, {0.601, 0.968}, {1.202, 1.936}},
-    },
-
-    /* HALLCONF = 0x0 */
-    {
-        /* GAIN_SEL = 0, 5x gain */
-        {{0.787, 1.267}, {1.573, 2.534}, {3.146, 5.068}, {6.292, 10.137}},
-        /* GAIN_SEL = 1, 4x gain */
-        {{0.629, 1.014}, {1.258, 2.027}, {2.517, 4.055}, {5.034, 8.109}},
-        /* GAIN_SEL = 2, 3x gain */
-        {{0.472, 0.760}, {0.944, 1.521}, {1.888, 3.041}, {3.775, 6.082}},
-        /* GAIN_SEL = 3, 2.5x gain */
-        {{0.392, 0.634}, {0.787, 1.267}, {1.573, 2.534}, {3.146, 5.068}},
-        /* GAIN_SEL = 4, 2x gain */
-        {{0.315, 0.507}, {0.629, 1.014}, {1.258, 2.027}, {2.517, 4.055}},
-        /* GAIN_SEL = 5, 1.667x gain */
-        {{0.262, 0.422}, {0.524, 0.845}, {1.049, 1.689}, {2.097, 3.379}},
-        /* GAIN_SEL = 6, 1.333x gain */
-        {{0.210, 0.338}, {0.419, 0.676}, {0.839, 1.352}, {1.678, 2.703}},
-        /* GAIN_SEL = 7, 1x gain */
-        {{0.157, 0.253}, {0.315, 0.507}, {0.629, 1.014}, {1.258, 2.027}},
-    }
-};
-
-/**
- * Lookup table for conversion time based on [DIF_FILT][OSR].
- */
-const float mlx90392_tconv[8][4] =
-{
-    /* DIG_FILT = 0 */
-    {1.27, 1.84, 3.00, 5.30},
-    /* DIG_FILT = 1 */
-    {1.46, 2.23, 3.76, 6.84},
-    /* DIG_FILT = 2 */
-    {1.84, 3.00, 5.30, 9.91},
-    /* DIG_FILT = 3 */
-    {2.61, 4.53, 8.37, 16.05},
-    /* DIG_FILT = 4 */
-    {4.15, 7.60, 14.52, 28.34},
-    /* DIG_FILT = 5 */
-    {7.22, 13.75, 26.80, 52.92},
-    /* DIG_FILT = 6 */
-    {13.36, 26.04, 51.38, 102.07},
-    /* DIF_FILT = 7 */
-    {25.65, 50.61, 100.53, 200.37},
-};
-
-/**
  * This function reads the value of register for mlx90392
  *
  * @param dev the pointer of device driver structure
@@ -514,6 +445,34 @@ rt_err_t mlx90392_set_cust_ctrl(struct mlx90392_device *dev, union mlx90392_cust
     return res;
 }
 
+rt_err_t mlx90392_set_temperature(struct mlx90392_device *dev, rt_uint8_t onoff)
+{
+    rt_err_t res = RT_EOK;
+    union mlx90392_cust_ctrl val;
+
+    res = mlx90392_get_cust_ctrl(dev, &val);
+
+    if (1 == onoff)
+    {
+        if (val.t_comp_en == 0)
+        {
+            val.t_comp_en = 1;
+            res = mlx90392_set_cust_ctrl(dev, val);
+        }
+    }
+    else
+    {
+        if (val.t_comp_en == 1)
+        {
+            val.t_comp_en = 0;
+            res = mlx90392_set_cust_ctrl(dev, val);
+        }
+    }
+
+    return res;
+}
+
+
 rt_err_t mlx90392_get_xyz(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
 {
     rt_err_t res = RT_EOK;
@@ -547,74 +506,6 @@ rt_err_t mlx90392_get_xyz_flux(struct mlx90392_device *dev, struct mlx90392_xyz_
 }
 
 
-
-/*
-    Temperature sensor resolution       = 45.2 LSB/C
-    Temperature sensor output at 25C    = 46244 LSB(16u)
-    MLX90392 datasheet page 12
- */
-rt_int16_t mlx90392_convert_temperature(rt_uint16_t raw)
-{
-    float temperature;
-
-    temperature = 25 + (raw - 46244)/45.2;
-    rt_kprintf("t = %d.%d C\r\n", (int)temperature, ((int)(temperature*10))%10);
-}
-
-rt_err_t mlx90392_convert_measurement(struct mlx90392_device *dev, struct mlx90392_xyz xyz)
-{
-//    mlx90392_resolution_t res_x = MLX90392_RES_18;
-//    mlx90392_resolution_t res_y = MLX90392_RES_18;
-//    mlx90392_resolution_t res_z = MLX90392_RES_18;
-//
-//    mlx90392_gain_t gain = 3;
-//
-//    float x, y, z;
-//
-//    if (res_x == MLX90392_RES_18)
-//    {
-//        txyz.x -= 0x8000;
-//        rt_kprintf("txyz.x - 0x8000 = 0x%x\r\n", txyz.x);
-//    }
-//
-//    if (res_x == MLX90392_RES_19)
-//    {
-//        txyz.x -= 0x4000;
-//        rt_kprintf("txyz.x - 0x4000 = 0x%x\r\n", txyz.x);
-//    }
-//
-//    if (res_y == MLX90392_RES_18)
-//    {
-//        txyz.y -= 0x8000;
-//        rt_kprintf("txyz.y - 0x8000 = 0x%x\r\n", txyz.y);
-//    }
-//
-//    if (res_y == MLX90392_RES_19)
-//    {
-//        txyz.y -= 0x4000;
-//        rt_kprintf("txyz.x - 0x4000 = 0x%x\r\n", txyz.y);
-//    }
-//
-//    if (res_z == MLX90392_RES_18)
-//    {
-//        txyz.z -= 0x8000;
-//        rt_kprintf("txyz.z - 0x8000 = 0x%x\r\n", txyz.z);
-//    }
-//
-//    if (res_z == MLX90392_RES_19)
-//    {
-//        txyz.z -= 0x4000;
-//        rt_kprintf("txyz.z - 0x4000 = 0x%x\r\n", txyz.z);
-//    }
-//
-//    x = (float)txyz.x * mlx90392_lsb_lookup[0][gain][res_x][0];
-//    y = (float)txyz.y * mlx90392_lsb_lookup[0][gain][res_y][0];
-//    z = (float)txyz.z * mlx90392_lsb_lookup[0][gain][res_z][1];
-//
-//    // rt_kprintf("%.3f uT %.3f uT %.3f uT\r\n", x, y, z);
-//    // rt_kprintf("0x%xuT 0x%xuT 0x%xuT\r\n", x, y, z);
-//    rt_kprintf("%duT %duT %duT\r\n", (int)x, (int)y, (int)z);
-}
 
 rt_err_t mlx90392_set_hallconf(struct mlx90392_device *dev, rt_uint8_t hallconf)
 {
@@ -792,7 +683,7 @@ static rt_err_t mlx90392_continuous_measurement(struct mlx90392_device *dev, str
     return status;
 }
 
-static rt_err_t mlx90392_single_measurement(struct mlx90392_device *dev, struct mlx90392_xyz *xyz)
+static rt_err_t mlx90392_single_measurement(struct mlx90392_device *dev, struct mlx90392_xyz_flux *xyz)
 {
     rt_uint8_t status = RT_EOK;
     union mlx90392_stat1 stat1;
@@ -806,8 +697,7 @@ static rt_err_t mlx90392_single_measurement(struct mlx90392_device *dev, struct 
         rt_thread_delay(100);
     }
 
-    status = mlx90392_get_xyz(dev, xyz);
-//    data = convertRaw(raw_txyz);
+    status = mlx90392_get_xyz_flux(dev, xyz);
 
     return status;
 }
@@ -1119,10 +1009,12 @@ static void mlx90392(int argc, char **argv)
         }
         else if (!strcmp(argv[1], "xyz"))
         {
-            struct mlx90392_xyz xyz;
+            struct mlx90392_xyz_flux xyz;
 
             mlx90392_single_measurement(dev, &xyz);
-            rt_kprintf("x = 0x%x, y = 0x%x, z = 0x%x\r\n", xyz.x, xyz.y, xyz.z);
+            rt_kprintf("x = %d.%d\r\n", (rt_int16_t)xyz.x, (rt_int16_t)xyz.x*10%10);
+            rt_kprintf("y = %d.%d\r\n", (rt_int16_t)xyz.y, (rt_int16_t)xyz.y*10%10);
+            rt_kprintf("z = %d.%d\r\n", (rt_int16_t)xyz.z, (rt_int16_t)xyz.z*10%10);
         }
         else if (!strcmp(argv[1], "continuous"))
         {
