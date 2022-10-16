@@ -79,8 +79,8 @@ static rt_err_t mlx90392_mem_read(struct mlx90392_device *dev, rt_uint8_t start_
 
         msgs[0].addr  = dev->i2c_addr;    /* I2C Slave address */
         msgs[0].flags = RT_I2C_WR;        /* Write flag */
-        msgs[0].buf   = &send_buf;         /* Write data pointer */
-        msgs[0].len   = 1;         /* Number of bytes write */
+        msgs[0].buf   = &send_buf;        /* Write data pointer */
+        msgs[0].len   = 1;                /* Number of bytes write */
 
         msgs[1].addr  = dev->i2c_addr;    /* I2C Slave address */
         msgs[1].flags = RT_I2C_RD;        /* Read flag */
@@ -220,6 +220,21 @@ static rt_err_t mlx90392_get_stat2(struct mlx90392_device *dev, union mlx90392_s
     return res;
 }
 
+static rt_bool_t mlx90392_is_data_ready(struct mlx90392_device *dev)
+{
+    union mlx90392_stat1 stat1;
+
+    mlx90392_get_stat1(dev, &stat1);
+    if (stat1.drdy)
+    {
+        return RT_TRUE;
+    }
+    else
+    {
+        return RT_FALSE;
+    }
+}
+
 rt_err_t mlx90392_get_x(struct mlx90392_device *dev, rt_int16_t *x)
 {
     rt_err_t res = RT_EOK;
@@ -267,6 +282,11 @@ rt_err_t mlx90392_get_x_flux(struct mlx90392_device *dev, float *x)
     rt_err_t res = RT_EOK;
     rt_uint8_t recv_buf[2];
 
+    while (mlx90392_is_data_ready(dev) == RT_FALSE)
+    {
+        rt_thread_delay(100);
+    }
+
     res = mlx90392_mem_read(dev, 0x1, recv_buf, 2);
     if (res == RT_EOK)
     {
@@ -281,6 +301,11 @@ rt_err_t mlx90392_get_y_flux(struct mlx90392_device *dev, float *y)
     rt_err_t res = RT_EOK;
     rt_uint8_t recv_buf[2];
 
+    while (mlx90392_is_data_ready(dev) == RT_FALSE)
+    {
+        rt_thread_delay(100);
+    }
+
     res = mlx90392_mem_read(dev, 0x3, recv_buf, 2);
     if (res == RT_EOK)
     {
@@ -294,6 +319,11 @@ rt_err_t mlx90392_get_z_flux(struct mlx90392_device *dev, float *z)
 {
     rt_err_t res = RT_EOK;
     rt_uint8_t recv_buf[2];
+
+    while (mlx90392_is_data_ready(dev) == RT_FALSE)
+    {
+        rt_thread_delay(100);
+    }
 
     res = mlx90392_mem_read(dev, 0x5, recv_buf, 2);
     if (res == RT_EOK)
@@ -322,6 +352,11 @@ rt_err_t mlx90392_get_temperature(struct mlx90392_device *dev, float *t)
 {
     rt_err_t res = RT_EOK;
     rt_uint8_t recv_buf[2];
+
+    while (mlx90392_is_data_ready(dev) == RT_FALSE)
+    {
+        rt_thread_delay(100);
+    }
 
     res = mlx90392_mem_read(dev, 0x8, recv_buf, 2);
     if (res == RT_EOK)
@@ -382,6 +417,45 @@ rt_err_t mlx90392_set_mode(struct mlx90392_device *dev, enum mlx90392_mode appli
     if (res != RT_EOK)
     {
         rt_kprintf("set application mode error\r\n");
+    }
+    else
+    {
+        switch (application_mode)
+        {
+        case POWER_DOWN_MODE:
+            rt_kprintf("POWER_DOWN_MODE\r\n");
+            break;
+        case SINGLE_MEASUREMENT_MODE:
+            rt_kprintf("SINGLE_MEASUREMENT_MODE\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_10HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_10HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_20HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_20HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_50HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_50HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_100HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_100HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_200HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_200HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_500HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_500HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_700HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_700HZ\r\n");
+            break;
+        case CONTINUOUS_MEASUREMENT_MODE_1400HZ:
+            rt_kprintf("CONTINUOUS_MEASUREMENT_MODE_1400HZ");
+            break;
+        default:
+            rt_kprintf("unknown application mode\r\n");
+            break;
+        }
     }
 
     return res;
@@ -493,6 +567,11 @@ rt_err_t mlx90392_get_xyz_flux(struct mlx90392_device *dev, struct mlx90392_xyz_
 {
     rt_err_t res = RT_EOK;
     rt_uint8_t recv_buf[6];
+
+    while (mlx90392_is_data_ready(dev) == RT_FALSE)
+    {
+        rt_thread_delay(100);
+    }
 
     res = mlx90392_mem_read(dev, 0x1, recv_buf, 6);
     if (res == RT_EOK)
@@ -878,6 +957,9 @@ struct mlx90392_device *mlx90392_init(const char *dev_name, rt_uint8_t param)
             {
                 rt_kprintf("CID is 0x%x\r\n", id[0]);
                 rt_kprintf("DID is 0x%x\r\n", id[1]);
+
+                mlx90392_set_mode(dev, SINGLE_MEASUREMENT_MODE);
+                mlx90392_set_temperature(dev, 1);
             }
 
             rt_kprintf("Device i2c address is:'0x%x'!\r\n", dev->i2c_addr);
@@ -968,6 +1050,10 @@ static void mlx90392(int argc, char **argv)
 
             mlx90392_get_stat1(dev, &stat1);
         }
+        else if (!strcmp(argv[1], "mode"))
+        {
+            mlx90392_set_mode(dev, atoi(argv[2]));
+        }
         else if (!strcmp(argv[1], "x"))
         {
             rt_int16_t x;
@@ -994,7 +1080,7 @@ static void mlx90392(int argc, char **argv)
             float t;
 
             mlx90392_get_temperature(dev, &t);
-            rt_kprintf("t = %d.%d\r\n", (rt_int16_t)t, (rt_uint16_t)t*10%10);
+            rt_kprintf("t = %d.%d\r\n", (rt_int16_t)t, (rt_uint16_t)(t*100)%100);
         }
         else if (!strcmp(argv[1], "rr"))
         {
@@ -1011,10 +1097,11 @@ static void mlx90392(int argc, char **argv)
         {
             struct mlx90392_xyz_flux xyz;
 
-            mlx90392_single_measurement(dev, &xyz);
-            rt_kprintf("x = %d.%d\r\n", (rt_int16_t)xyz.x, (rt_int16_t)xyz.x*10%10);
-            rt_kprintf("y = %d.%d\r\n", (rt_int16_t)xyz.y, (rt_int16_t)xyz.y*10%10);
-            rt_kprintf("z = %d.%d\r\n", (rt_int16_t)xyz.z, (rt_int16_t)xyz.z*10%10);
+//            mlx90392_single_measurement(dev, &xyz);
+            mlx90392_get_xyz_flux(dev, &xyz);
+            rt_kprintf("x = %d.%d\r\n", (rt_int16_t)xyz.x, (rt_int16_t)(xyz.x*10)%10);
+            rt_kprintf("y = %d.%d\r\n", (rt_int16_t)xyz.y, (rt_int16_t)(xyz.y*10)%10);
+            rt_kprintf("z = %d.%d\r\n", (rt_int16_t)xyz.z, (rt_int16_t)(xyz.z*10)%10);
         }
         else if (!strcmp(argv[1], "continuous"))
         {
