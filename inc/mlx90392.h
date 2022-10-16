@@ -13,12 +13,11 @@
 
 #include <rtthread.h>
 
-enum pn
-{
-    MLX90392ELQ_AAA_010,
-    MLX90392ELQ_AAA_011,
-    MLX90392ELQ_AAA_013,
-};
+#define MLX90392ELQ_AAA_010 0
+#define MLX90392ELQ_AAA_011 1
+#define MLX90392ELQ_AAA_013 2
+
+#define MLX90397RLQ_AAA_000 3
 
 #define MLX90392    MLX90392ELQ_AAA_011
 
@@ -40,6 +39,14 @@ enum pn
 #define MAGNETO10_MAG_FLUX_RESOLUTION   1.5     //uT/LSB
 #elif MLX90392 == MLX90392ELQ_AAA_013
 #define MLX90392_I2C_ADDRESS                    (0x3C)        // address pin A0,A1 low (GND), default for MLX90392
+
+/**
+ * @brief Magneto 10 magnetic flux resolution.
+ * @details Specified resolution for magnetic flux of Magneto 10 Click driver.
+ */
+#define MAGNETO10_MAG_FLUX_RESOLUTION   1.5     //uT/LSB
+#elif MLX90392 == MLX90397RLQ_AAA_000
+#define MLX90392_I2C_ADDRESS                    (0x0D)        // address pin A0,A1 low (GND), default for MLX90397
 
 /**
  * @brief Magneto 10 magnetic flux resolution.
