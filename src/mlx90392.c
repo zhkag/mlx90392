@@ -702,7 +702,7 @@ void mlx90392_setup(struct mlx90392_device *dev)
  *
  * @return the reading status, RT_EOK represents  reading the data successfully.
  */
-static rt_err_t mlx90392_continuous_measurement(struct mlx90392_device *dev, struct mlx90392_xyz *xyz, rt_uint8_t freq)
+static rt_err_t mlx90392_continuous_measurement(struct mlx90392_device *dev, struct mlx90392_xyz *xyz, rt_uint16_t freq)
 {
     rt_uint8_t status = RT_EOK;
     union mlx90392_stat1 stat1;
