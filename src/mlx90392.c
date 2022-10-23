@@ -742,7 +742,7 @@ static rt_err_t mlx90392_continuous_measurement(struct mlx90392_device *dev, str
         status = mlx90392_set_mode(dev, CONTINUOUS_MEASUREMENT_MODE_1400HZ);
         break;
     default:
-        rt_kprintf("wrong freqency\r\n");
+        rt_kprintf("wrong frequency\r\n");
         break;
     }
 
